@@ -19,11 +19,11 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
 
     uint256 public immutable mintPrice;
     uint256 public totalSupply;
-    uint256 public immutable maxSupply
+    uint256 public immutable maxSupply;
     bool public mintEnabled;
 
     // uris for nft metadata
-    mapping(uint256 => string) private _uris;
+    mapping(uint256 => string) private uris;
 
     // whitelisted addresses and how many tokens they can purchase
     mapping(address => uint) public whitelistedAddresses;
@@ -42,23 +42,23 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     // functions
 
     // enables minting
-    function setMintEnabled(bool mintEnabled_) external onlyOwner {
+    function setMintEnabled(bool _mintEnabled) external onlyOwner {
         mintEnabled = mintEnabled_;
     }
 
     // returns uri of a given tokenId
-    function uri(uint256 tokenId) override public view returns (string memory) {
-        return(_uris[tokenId]);
+    function uri(uint256 _tokenId) override public view returns (string memory) {
+        return(uris[_tokenId]);
     }
 
-    // sets the uri for each tokenID and stores in _uris mapping
+    // sets the uri for each tokenID and stores in uris mapping
     function setTokenUri(uint256 _tokenId, string memory _uri) public onlyOwner {
-        _uris[_tokenId] = _uri;
+        uris[_tokenId] = _uri;
     }
 
     // sets date for whitelisted addresses to mint by
-    function setValidUntil(uint256 _tokenId, uint daysNo) public onlyOwner {
-        validUntil[_tokenId] = block.timestamp + (daysNo * 1 days);
+    function setValidUntil(uint256 _tokenId, uint _daysNo) public onlyOwner {
+        validUntil[_tokenId] = block.timestamp + (_daysNo * 1 days);
     }
 
     // returns bool whether whitelisted address can still mint
@@ -75,7 +75,19 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
 
     }
 
+    // allows owner to choose an address and how many nfts that address can mint
+    function updateWhitelist(address _addr, uint _amount) public onlyOwner {
+        whitelistAddresses[_addr] = _amount;
+    }
 
+    function whitelistMint(address _recipient, uint256 _tokenId, uint256 _amount) public {
+        require(_amount >= 1, "please enter a valid number");
+        require(whitelistedAddresses[msg.sender] >= _amount, "This address has not been whitelisted.");
+        require(isValid == true);
+
+        _mint(_recipient, _tokenId, _amount, "");
+        whitelistedAddresses[msg.sender] -= _amount;
+    }
 }
 
 
