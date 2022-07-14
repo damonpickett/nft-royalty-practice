@@ -15,11 +15,11 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NFTRoyaltyPractice is ERC1155, Ownable {
-    // constants
+    // CONSTANTS
 
     uint256 public immutable mintPrice;
-    uint256 public totalSupply;
     uint256 public immutable maxSupply;
+    uint256 public immutable maxPerTokenId;
     bool public mintEnabled;
 
     // uris for nft metadata
@@ -31,15 +31,23 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     // tokenID mapped to date whitelist option is valid
     mapping(uint256 => uint) public validUntil;
 
-    // constructor
+    // tokenId => total supply
+    mapping(uint256 => uint256) public totalSupply;
+
+    // tracks the number of tokenId's minted per wallet: address => (tokenId => total minted)
+    mapping(address => mapping(uint256 => uint256)) public tokenIdMints;
+
+    // CONSTRUCTOR
+
     constructor() payable ERC1155("NFTRoyaltyPractice") {
         // initialize variables
         mintPrice = 0.01 ether;
         totalSupply = 0;
-        maxSupply = 
+        maxSupply = 1000;
+        maxPerTokenId = 1;
     }
 
-    // functions
+    // FUNCTIONS
 
     // enables minting
     function setMintEnabled(bool _mintEnabled) external onlyOwner {
@@ -67,11 +75,14 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     }
 
     // public mint
-    function mint(address recipient, uint256 tokenId, uint256 amount) public payable {
+    function mint(address _recipient, uint256 _tokenId, uint256 _amount) public payable {
         require(mintEnabled, "Minting has not been enabled.");
-        require(msg.value == amount * mintPrice, "Incorrect mint value.");
-        // HOW DO I LIMIT THE AMOUNT PER TOKENID???
-        require(totalSupply + amount <= maxSupply, "Sorry, we're sold out.")
+        require(msg.value == _amount * mintPrice, "Incorrect mint value.");
+        require(totalSupply[_tokenId] + amount <= maxSupply, "Sorry, you have exceeded the supply.");
+        require(tokenIdMints[msg.sender][_tokenId] + _amount == maxPerTokenId);
+
+        tokenIdMints[msg.sender][_tokenId] += _amount;
+        
 
     }
 
