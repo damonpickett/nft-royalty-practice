@@ -17,9 +17,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract NFTRoyaltyPractice is ERC1155, Ownable {
     // constants
 
-    uint256 public immutable mintPrice;
+    uint256 public mintPrice;
     uint256 public immutable maxSupply;
     uint256 public immutable maxPerTokenId;
+    address payable public payments;
     bool public mintEnabled;
 
     // uris for nft metadata
@@ -40,11 +41,10 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     // constructor
     constructor(
         string memory _name,
-        string memory _symbol,
         uint256 _maxPerTokenId,
         uint256 _maxSupply,
         address _payments
-    ) payable ERC1155(_name, _symbol) {
+    ) payable ERC1155(_name) {
         // initialize variables
         mintPrice = 0.01 ether;
         maxSupply = _maxSupply;
@@ -83,17 +83,18 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     function mint(address _recipient, uint256 _tokenId, uint256 _amount) public payable {
         require(mintEnabled, "Minting has not been enabled.");
         require(msg.value == _amount * mintPrice, "Incorrect mint value.");
-        require(totalSupply[_tokenId] + amount <= maxSupply, "Sorry, you have exceeded the supply.");
-        require(tokenIdMints[msg.sender][_tokenId] + _amount == maxPerTokenId);
+        require(totalSupply[_tokenId] + _amount <= maxSupply, "Sorry, you have exceeded the supply.");
+        require(tokenIdMints[msg.sender][_tokenId] + _amount == maxPerTokenId, "Sorry, you have exceeded the alotted amount per token ID.");
 
+        totalSupply[_tokenId] += _amount;
         tokenIdMints[msg.sender][_tokenId] += _amount;
+        _mint(_recipient, _tokenId, _amount, "");
         
-
     }
 
     // allows owner to choose an address and how many nfts that address can mint
     function updateWhitelist(address _addr, uint _amount) public onlyOwner {
-        whitelistAddresses[_addr] = _amount;
+        whitelistedAddresses[_addr] = _amount;
     }
 
     function whitelistMint(address _recipient, uint256 _tokenId, uint256 _amount) public {
@@ -101,12 +102,13 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
         require(whitelistedAddresses[msg.sender] >= _amount, "This address has not been whitelisted.");
         require(isValid(_tokenId) == true);
 
-        _mint(_recipient, _tokenId, _amount, "");
         whitelistedAddresses[msg.sender] -= _amount;
+        _mint(_recipient, _tokenId, _amount, "");
     }
 
+    function withdraw() public payable onlyOwner {
+        (bool success, ) = payable(payments).call{value: address(this).balance}("");
+        require(success);
+  }
 
 }
-
-
-
