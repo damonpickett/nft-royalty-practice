@@ -15,11 +15,12 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NFTRoyaltyPractice is ERC1155, Ownable {
-    // CONSTANTS
+    // constants
 
-    uint256 public immutable mintPrice;
+    uint256 public mintPrice;
     uint256 public immutable maxSupply;
     uint256 public immutable maxPerTokenId;
+    address payable public payments;
     bool public mintEnabled;
 
     // uris for nft metadata
@@ -37,21 +38,25 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     // tracks the number of tokenId's minted per wallet: address => (tokenId => total minted)
     mapping(address => mapping(uint256 => uint256)) public tokenIdMints;
 
-    // CONSTRUCTOR
-
-    constructor() payable ERC1155("NFTRoyaltyPractice") {
+    // constructor
+    constructor(
+        string memory _name,
+        uint256 _maxPerTokenId,
+        uint256 _maxSupply,
+        address _payments
+    ) payable ERC1155(_name) {
         // initialize variables
         mintPrice = 0.01 ether;
-        totalSupply = 0;
-        maxSupply = 1000;
-        maxPerTokenId = 1;
+        maxSupply = _maxSupply;
+        maxPerTokenId = _maxPerTokenId;
+        payments = payable(_payments);
     }
 
-    // FUNCTIONS
+    // functions
 
     // enables minting
     function setMintEnabled(bool _mintEnabled) external onlyOwner {
-        mintEnabled = mintEnabled_;
+        mintEnabled = _mintEnabled;
     }
 
     // returns uri of a given tokenId
@@ -59,7 +64,7 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
         return(uris[_tokenId]);
     }
 
-    // sets the uri for each tokenID and stores in uris mapping
+    // sets the uri for each tokenID and stores in _uris mapping
     function setTokenUri(uint256 _tokenId, string memory _uri) public onlyOwner {
         uris[_tokenId] = _uri;
     }
@@ -78,28 +83,32 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     function mint(address _recipient, uint256 _tokenId, uint256 _amount) public payable {
         require(mintEnabled, "Minting has not been enabled.");
         require(msg.value == _amount * mintPrice, "Incorrect mint value.");
-        require(totalSupply[_tokenId] + amount <= maxSupply, "Sorry, you have exceeded the supply.");
-        require(tokenIdMints[msg.sender][_tokenId] + _amount == maxPerTokenId);
+        require(totalSupply[_tokenId] + _amount <= maxSupply, "Sorry, you have exceeded the supply.");
+        require(tokenIdMints[msg.sender][_tokenId] + _amount == maxPerTokenId, "Sorry, you have exceeded the alotted amount per token ID.");
 
+        totalSupply[_tokenId] += _amount;
         tokenIdMints[msg.sender][_tokenId] += _amount;
+        _mint(_recipient, _tokenId, _amount, "");
         
-
     }
 
     // allows owner to choose an address and how many nfts that address can mint
     function updateWhitelist(address _addr, uint _amount) public onlyOwner {
-        whitelistAddresses[_addr] = _amount;
+        whitelistedAddresses[_addr] = _amount;
     }
 
     function whitelistMint(address _recipient, uint256 _tokenId, uint256 _amount) public {
         require(_amount >= 1, "please enter a valid number");
         require(whitelistedAddresses[msg.sender] >= _amount, "This address has not been whitelisted.");
-        require(isValid == true);
+        require(isValid(_tokenId) == true);
 
-        _mint(_recipient, _tokenId, _amount, "");
         whitelistedAddresses[msg.sender] -= _amount;
+        _mint(_recipient, _tokenId, _amount, "");
     }
+
+    function withdraw() public payable onlyOwner {
+        (bool success, ) = payable(payments).call{value: address(this).balance}("");
+        require(success);
+  }
+
 }
-
-
-
