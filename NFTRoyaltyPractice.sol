@@ -18,10 +18,11 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     // constants
 
     uint256 public mintPrice;
-    uint256 public immutable maxSupply;
-    uint256 public immutable maxPerTokenId;
+    uint256 public maxSupply;
+    uint256 public maxPerTokenId;
     address payable public payments;
     bool public mintEnabled;
+    bool public whitelistGiveaway;
 
     // uris for nft metadata
     mapping(uint256 => string) private uris;
@@ -54,9 +55,14 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
 
     // functions
 
-    // enables minting
-    function setMintEnabled(bool _mintEnabled) external onlyOwner {
+    // enables public minting
+    function publicMintEnabled(bool _mintEnabled) external onlyOwner {
         mintEnabled = _mintEnabled;
+    }
+
+    // enables presale minting
+    function whitelistMintEnabled(bool _whitelistGiveaway) external onlyOwner {
+        whitelistGiveaway = _whitelistGiveaway;
     }
 
     // returns uri of a given tokenId
@@ -84,7 +90,7 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
         require(mintEnabled, "Minting has not been enabled.");
         require(msg.value == _amount * mintPrice, "Incorrect mint value.");
         require(totalSupply[_tokenId] + _amount <= maxSupply, "Sorry, you have exceeded the supply.");
-        require(tokenIdMints[msg.sender][_tokenId] + _amount == maxPerTokenId, "Sorry, you have exceeded the alotted amount per token ID.");
+        require(tokenIdMints[msg.sender][_tokenId] + _amount <= maxPerTokenId, "Sorry, you have exceeded the alotted amount per token ID.");
 
         totalSupply[_tokenId] += _amount;
         tokenIdMints[msg.sender][_tokenId] += _amount;
@@ -98,8 +104,9 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     }
 
     function whitelistMint(address _recipient, uint256 _tokenId, uint256 _amount) public {
+        require(whitelistGiveaway, "Whitelist giveaway has not been enabled");
         require(_amount >= 1, "please enter a valid number");
-        require(whitelistedAddresses[msg.sender] >= _amount, "This address has not been whitelisted.");
+        require(whitelistedAddresses[msg.sender] <= _amount, "This address has not been whitelisted.");
         require(isValid(_tokenId) == true);
 
         whitelistedAddresses[msg.sender] -= _amount;
