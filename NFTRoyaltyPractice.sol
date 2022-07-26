@@ -87,8 +87,17 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
 
     // public mint
     function mint(address _recipient, uint256 _tokenId, uint256 _amount) public payable {
-        require(mintEnabled, "Minting has not been enabled.");
-        require(msg.value == _amount * mintPrice, "Incorrect mint value.");
+
+        if(whitelistedAddresses[msg.sender] == 0) {
+            require(mintEnabled, "Minting has not been enabled.");
+            require(msg.value == _amount * mintPrice, "Incorrect mint value.");
+        } else {
+            require(whitelistGiveaway, "Whitelist giveaway has not been enabled");
+            require(isValid(_tokenId) == true, "Whitelist giveaway is no longer valid.");
+            whitelistedAddresses[msg.sender] -= _amount;
+        }
+
+        require(_amount >= 1, "please enter a valid number");
         require(totalSupply[_tokenId] + _amount <= maxSupply, "Sorry, you have exceeded the supply.");
         require(tokenIdMints[msg.sender][_tokenId] + _amount <= maxPerTokenId, "Sorry, you have exceeded the alotted amount per token ID.");
 
@@ -101,16 +110,6 @@ contract NFTRoyaltyPractice is ERC1155, Ownable {
     // allows owner to choose an address and how many nfts that address can mint
     function updateWhitelist(address _addr, uint _amount) public onlyOwner {
         whitelistedAddresses[_addr] = _amount;
-    }
-
-    function whitelistMint(address _recipient, uint256 _tokenId, uint256 _amount) public {
-        require(whitelistGiveaway, "Whitelist giveaway has not been enabled");
-        require(_amount >= 1, "please enter a valid number");
-        require(whitelistedAddresses[msg.sender] <= _amount, "This address has not been whitelisted.");
-        require(isValid(_tokenId) == true);
-
-        whitelistedAddresses[msg.sender] -= _amount;
-        _mint(_recipient, _tokenId, _amount, "");
     }
 
     function withdraw() public payable onlyOwner {
